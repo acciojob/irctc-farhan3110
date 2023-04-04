@@ -1,77 +1,100 @@
 package com.driver.services;
 
-import com.driver.EntryDto.AddTrainEntryDto;
-import com.driver.EntryDto.SeatAvailabilityEntryDto;
+
+import com.driver.EntryDto.BookTicketEntryDto;
 import com.driver.model.Passenger;
-import com.driver.model.Station;
 import com.driver.model.Ticket;
 import com.driver.model.Train;
+import com.driver.repository.PassengerRepository;
+import com.driver.repository.TicketRepository;
 import com.driver.repository.TrainRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
-public class TrainService {
+public class TicketService {
+
+    @Autowired
+    TicketRepository ticketRepository;
 
     @Autowired
     TrainRepository trainRepository;
 
-    public Integer addTrain(AddTrainEntryDto trainEntryDto){
+    @Autowired
+    PassengerRepository passengerRepository;
 
-        //Add the train to the trainRepository
-        //and route String logic to be taken from the Problem statement.
-        //Save the train and return the trainId that is generated from the database.
-        //Avoid using the lombok library
-        return null;
+
+
+    public Integer bookTicket(BookTicketEntryDto bookTicketEntryDto)throws Exception{
+
+        //Check for validity
+        Train train=trainRepository.findById(bookTicketEntryDto.getTrainId()).get();
+        int bookedSeats=0;
+        List<Ticket>booked=train.getBookedTickets();
+        for(Ticket ticket:booked){
+            bookedSeats+=ticket.getPassengersList().size();
+        }
+
+        if(bookedSeats+bookTicketEntryDto.getNoOfSeats()> train.getNoOfSeats()){
+            throw new Exception("Less tickets are available");
+        }
+
+        String stations[]=train.getRoute().split(",");
+        List<Passenger>passengerList=new ArrayList<>();
+        List<Integer>ids=bookTicketEntryDto.getPassengerIds();
+        for(int id: ids){
+            passengerList.add(passengerRepository.findById(id).get());
+        }
+        int x=-1,y=-1;
+        for(int i=0;i<stations.length;i++){
+            if(bookTicketEntryDto.getFromStation().toString().equals(stations[i])){
+                x=i;
+                break;
+            }
+        }
+        for(int i=0;i<stations.length;i++){
+            if(bookTicketEntryDto.getToStation().toString().equals(stations[i])){
+                y=i;
+                break;
+            }
+        }
+        if(x==-1||y==-1||y-x<0){
+            throw new Exception("Invalid stations");
+        }
+        Ticket ticket=new Ticket();
+        ticket.setPassengersList(passengerList);
+        ticket.setFromStation(bookTicketEntryDto.getFromStation());
+        ticket.setToStation(bookTicketEntryDto.getToStation());
+
+        int fair=0;
+        fair=bookTicketEntryDto.getNoOfSeats()*(y-x)*300;
+
+        ticket.setTotalFare(fair);
+        ticket.setTrain(train);
+
+        train.getBookedTickets().add(ticket);
+        train.setNoOfSeats(train.getNoOfSeats()-bookTicketEntryDto.getNoOfSeats());
+
+        Passenger passenger=passengerRepository.findById(bookTicketEntryDto.getBookingPersonId()).get();
+        passenger.getBookedTickets().add(ticket);
+        //Use bookedTickets List from the TrainRepository to get bookings done against that train
+        // Incase the there are insufficient tickets
+        // throw new Exception("Less tickets are available");
+        //otherwise book the ticket, calculate the price and other details
+        //Save the information in corresponding DB Tables
+        //Fare System : Check problem statement
+        //Incase the train doesn't pass through the requested stations
+        //throw new Exception("Invalid stations");
+        //Save the bookedTickets in the train Object
+        //Also in the passenger Entity change the attribute bookedTickets by using the attribute bookingPersonId.
+        //And the end return the ticketId that has come from db
+
+        trainRepository.save(train);
+
+        return ticketRepository.save(ticket).getTicketId();
+
     }
-
-    public Integer calculateAvailableSeats(SeatAvailabilityEntryDto seatAvailabilityEntryDto){
-
-        //Calculate the total seats available
-        //Suppose the route is A B C D
-        //And there are 2 seats avaialble in total in the train
-        //and 2 tickets are booked from A to C and B to D.
-        //The seat is available only between A to C and A to B. If a seat is empty between 2 station it will be counted to our final ans
-        //even if that seat is booked post the destStation or before the boardingStation
-        //Inshort : a train has totalNo of seats and there are tickets from and to different locations
-        //We need to find out the available seats between the given 2 stations.
-
-       return null;
-    }
-
-    public Integer calculatePeopleBoardingAtAStation(Integer trainId,Station station) throws Exception{
-
-        //We need to find out the number of people who will be boarding a train from a particular station
-        //if the trainId is not passing through that station
-        //throw new Exception("Train is not passing from this station");
-        //  in a happy case we need to find out the number of such people.
-
-
-        return 0;
-    }
-
-    public Integer calculateOldestPersonTravelling(Integer trainId){
-
-        //Throughout the journey of the train between any 2 stations
-        //We need to find out the age of the oldest person that is travelling the train
-        //If there are no people travelling in that train you can return 0
-
-        return 0;
-    }
-
-    public List<Integer> trainsBetweenAGivenTime(Station station, LocalTime startTime, LocalTime endTime){
-
-        //When you are at a particular station you need to find out the number of trains that will pass through a given station
-        //between a particular time frame both start time and end time included.
-        //You can assume that the date change doesn't need to be done ie the travel will certainly happen with the same date (More details
-        //in problem statement)
-        //You can also assume the seconds and milli seconds value will be 0 in a LocalTime format.
-
-        return null;
-    }
-
 }
